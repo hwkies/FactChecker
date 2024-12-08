@@ -9,3 +9,11 @@ idea/workspace.xml
 .idea/dataSources/
 .idea/dataSources.local.xml
 /results/
+/results_eval_fever/
+/results_eval_mnli/
+/results_fever/
+/roberta_mnli/
+/roberta_fever_mnli/
+/logs/
+/embeddings/
+/hnsw_index/
