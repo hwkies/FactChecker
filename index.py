@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import json
 import subprocess
+import platform
 
 k = 100
 
@@ -24,11 +25,13 @@ beir_vectors_list = [np.array(v).tolist() for v in beir_vectors]
 with open('./embeddings/beir_embeddings.jsonl', 'w') as f:
     for i in range(k):
         f.write(json.dumps({'id': beir_docids[i], 'contents': beir_texts[i], 'vector': beir_vectors_list[i]}) + '\n')
-
-subprocess.call("create_hnsw.bat", shell=True)
+if platform.system() == 'Windows':
+    subprocess.call("hnsw_scripts/create_hnsw.bat", shell=True)
+else:
+    subprocess.call("hnsw_scripts/create_hnsw.sh", shell=True)
 
 searcher = FaissSearcher(
-    'indexes',
+    'hnsw_index',
     model
 )
 hits = searcher.search(query_embedding, k=k)
