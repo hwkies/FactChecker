@@ -51,26 +51,40 @@ class RetrievalModel:
         news_texts = [json.loads(self.news_reader.doc(doc.docid).raw())['text'] for doc in news_rankings]
         scifact_texts = [json.loads(self.scifact_reader.doc(doc.docid).raw())['text'] for doc in scifact_rankings]
 
-        climate_vectors = self.embedding_model.encode(climate_texts, convert_to_numpy=True, convert_to_tensor=False)
-        covid_vectors = self.embedding_model.encode(covid_texts, convert_to_numpy=True, convert_to_tensor=False)
-        fever_vectors = self.embedding_model.encode(fever_texts, convert_to_numpy=True, convert_to_tensor=False)
-        news_vectors = self.embedding_model.encode(news_texts, convert_to_numpy=True, convert_to_tensor=False)
-        scifact_vectors = self.embedding_model.encode(scifact_texts, convert_to_numpy=True, convert_to_tensor=False)
+        climate_docid_text_pairs = list(zip(climate_docids, climate_texts))
+        covid_docid_text_pairs = list(zip(covid_docids, covid_texts))
+        fever_docid_text_pairs = list(zip(fever_docids, fever_texts))
+        news_docid_text_pairs = list(zip(news_docids, news_texts))
+        scifact_docid_text_pairs = list(zip(scifact_docids, scifact_texts))
 
-        climate_vectors_list = [np.array(v).tolist() for v in climate_vectors]
-        covid_vectors_list = [np.array(v).tolist() for v in covid_vectors]
-        fever_vectors_list = [np.array(v).tolist() for v in fever_vectors]
-        news_vectors_list = [np.array(v).tolist() for v in news_vectors]
-        scifact_vectors_list = [np.array(v).tolist() for v in scifact_vectors]
+        all_docid_text_pairs = set(climate_docid_text_pairs + covid_docid_text_pairs + fever_docid_text_pairs + news_docid_text_pairs + scifact_docid_text_pairs)
 
-        beir_texts = climate_texts + covid_texts + fever_texts + news_texts + scifact_texts
-        actual_docids = climate_docids + covid_docids + fever_docids + news_docids + scifact_docids
-        beir_docids = [i for i in range(len(beir_texts))]
-        beir_vectors_list = climate_vectors_list + covid_vectors_list + fever_vectors_list + news_vectors_list + scifact_vectors_list
+        all_docids, all_texts = zip(*all_docid_text_pairs)
+
+        all_vectors = self.embedding_model.encode(all_texts, convert_to_numpy=True, convert_to_tensor=False)
+
+        all_vectors_list = [np.array(v).tolist() for v in all_vectors]
+
+        # climate_vectors = self.embedding_model.encode(climate_texts, convert_to_numpy=True, convert_to_tensor=False)
+        # covid_vectors = self.embedding_model.encode(covid_texts, convert_to_numpy=True, convert_to_tensor=False)
+        # fever_vectors = self.embedding_model.encode(fever_texts, convert_to_numpy=True, convert_to_tensor=False)
+        # news_vectors = self.embedding_model.encode(news_texts, convert_to_numpy=True, convert_to_tensor=False)
+        # scifact_vectors = self.embedding_model.encode(scifact_texts, convert_to_numpy=True, convert_to_tensor=False)
+
+        # climate_vectors_list = [np.array(v).tolist() for v in climate_vectors]
+        # covid_vectors_list = [np.array(v).tolist() for v in covid_vectors]
+        # fever_vectors_list = [np.array(v).tolist() for v in fever_vectors]
+        # news_vectors_list = [np.array(v).tolist() for v in news_vectors]
+        # scifact_vectors_list = [np.array(v).tolist() for v in scifact_vectors]
+
+        #beir_texts = climate_texts + covid_texts + fever_texts + news_texts + scifact_texts
+        #actual_docids = climate_docids + covid_docids + fever_docids + news_docids + scifact_docids
+        #beir_vectors_list = climate_vectors_list + covid_vectors_list + fever_vectors_list + news_vectors_list + scifact_vectors_list
+        beir_docids = [i for i in range(len(all_texts))]
         with open('./embeddings/beir_embeddings.jsonl', 'w') as f:
-            for i in range(len(beir_texts)):
-                f.write(json.dumps({'id': beir_docids[i], 'contents': beir_texts[i], 'vector': beir_vectors_list[i]}) + '\n')
-        return beir_texts, actual_docids, beir_docids, beir_vectors_list
+            for i in range(len(all_texts)):
+                f.write(json.dumps({'id': beir_docids[i], 'contents': all_texts[i], 'vector': all_vectors_list[i]}) + '\n')
+        return all_texts, all_docids, beir_docids, all_vectors_list
 
     def __create_hnsw_index(self):
         if platform.system() == 'Windows':
