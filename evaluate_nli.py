@@ -91,5 +91,5 @@ trainer_fever = Trainer(
 metrics_mnli = trainer_mnli.evaluate()
 metrics_fever = trainer_fever.evaluate()
 
-with open(f"eval_metrics.json", "w") as f:
+with open(f"eval_nli_metrics.json", "w") as f:
     json.dump({"metrics_mnli": metrics_mnli, "metrics_fever": metrics_fever}, f)

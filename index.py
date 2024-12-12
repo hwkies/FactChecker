@@ -10,117 +10,141 @@ import platform
 import torch
 from torch.nn.functional import softmax
 
-k = 100
+class RetrievalModel:
+    def __init__(self, query: str, k=100):
+        self.query = query
+        self.k = k
+        self.climate_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-climate-fever.multifield')
+        self.climate_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-climate-fever.multifield')
 
-query = 'oj simpson'
+        self.covid_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-trec-covid.multifield')
+        self.covid_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-trec-covid.multifield')
 
-climate_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-climate-fever.multifield')
-climate_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-climate-fever.multifield')
+        self.fever_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-fever.multifield')
+        self.fever_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-fever.multifield')
 
-covid_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-trec-covid.multifield')
-covid_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-trec-covid.multifield')
+        self.news_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-trec-news.multifield')
+        self.news_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-trec-news.multifield')
 
-fever_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-fever.multifield')
-fever_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-fever.multifield')
+        self.scifact_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-scifact.multifield')
+        self.scifact_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-scifact.multifield')
 
-news_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-trec-news.multifield')
-news_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-trec-news.multifield')
+        self.embedding_model = SentenceTransformer('multi-qa-mpnet-base-cos-v1')
+        self.query_embedding = self.embedding_model.encode(query).reshape(1, -1)
 
-scifact_searcher = LuceneSearcher.from_prebuilt_index('beir-v1.0.0-scifact.multifield')
-scifact_reader = LuceneIndexReader.from_prebuilt_index('beir-v1.0.0-scifact.multifield')
+    def __initial_rankings(self):
+        climate_rankings = self.climate_searcher.search(self.query, k=self.k)
+        covid_rankings = self.covid_searcher.search(self.query, k=self.k)
+        fever_rankings = self.fever_searcher.search(self.query, k=self.k)
+        news_rankings = self.news_searcher.search(self.query, k=self.k)
+        scifact_rankings = self.scifact_searcher.search(self.query, k=self.k)
 
-embedding_model = SentenceTransformer('multi-qa-mpnet-base-cos-v1')
-query_embedding = embedding_model.encode(query).reshape(1, -1)
+        climate_docids = [doc.docid for doc in climate_rankings]
+        covid_docids = [doc.docid for doc in covid_rankings]
+        fever_docids = [doc.docid for doc in fever_rankings]
+        news_docids = [doc.docid for doc in news_rankings]
+        scifact_docids = [doc.docid for doc in scifact_rankings]
 
-climate_rankings = climate_searcher.search(query, k=k)
-covid_rankings = covid_searcher.search(query, k=k)
-fever_rankings = fever_searcher.search(query, k=k)
-news_rankings = news_searcher.search(query, k=k)
-scifact_rankings = scifact_searcher.search(query, k=k)
+        climate_texts = [json.loads(self.climate_reader.doc(doc.docid).raw())['text'] for doc in climate_rankings]
+        covid_texts = [json.loads(self.covid_reader.doc(doc.docid).raw())['text'] for doc in covid_rankings]
+        fever_texts = [json.loads(self.fever_reader.doc(doc.docid).raw())['text'] for doc in fever_rankings]
+        news_texts = [json.loads(self.news_reader.doc(doc.docid).raw())['text'] for doc in news_rankings]
+        scifact_texts = [json.loads(self.scifact_reader.doc(doc.docid).raw())['text'] for doc in scifact_rankings]
 
-climate_docids = [doc.docid for doc in climate_rankings]
-covid_docids = [doc.docid for doc in covid_rankings]
-fever_docids = [doc.docid for doc in fever_rankings]
-news_docids = [doc.docid for doc in news_rankings]
-scifact_docids = [doc.docid for doc in scifact_rankings]
+        climate_vectors = self.embedding_model.encode(climate_texts, convert_to_numpy=True, convert_to_tensor=False)
+        covid_vectors = self.embedding_model.encode(covid_texts, convert_to_numpy=True, convert_to_tensor=False)
+        fever_vectors = self.embedding_model.encode(fever_texts, convert_to_numpy=True, convert_to_tensor=False)
+        news_vectors = self.embedding_model.encode(news_texts, convert_to_numpy=True, convert_to_tensor=False)
+        scifact_vectors = self.embedding_model.encode(scifact_texts, convert_to_numpy=True, convert_to_tensor=False)
 
-print(len(climate_rankings))
-print(len(covid_rankings))
-print(len(fever_rankings))
-print(len(news_rankings))
-print(len(scifact_rankings))
+        climate_vectors_list = [np.array(v).tolist() for v in climate_vectors]
+        covid_vectors_list = [np.array(v).tolist() for v in covid_vectors]
+        fever_vectors_list = [np.array(v).tolist() for v in fever_vectors]
+        news_vectors_list = [np.array(v).tolist() for v in news_vectors]
+        scifact_vectors_list = [np.array(v).tolist() for v in scifact_vectors]
 
-climate_texts = [json.loads(climate_reader.doc(doc.docid).raw())['text'] for doc in climate_rankings]
-covid_texts = [json.loads(covid_reader.doc(doc.docid).raw())['text'] for doc in covid_rankings]
-fever_texts = [json.loads(fever_reader.doc(doc.docid).raw())['text'] for doc in fever_rankings]
-news_texts = [json.loads(news_reader.doc(doc.docid).raw())['text'] for doc in news_rankings]
-scifact_texts = [json.loads(scifact_reader.doc(doc.docid).raw())['text'] for doc in scifact_rankings]
+        beir_texts = climate_texts + covid_texts + fever_texts + news_texts + scifact_texts
+        actual_docids = climate_docids + covid_docids + fever_docids + news_docids + scifact_docids
+        beir_docids = [i for i in range(len(beir_texts))]
+        beir_vectors_list = climate_vectors_list + covid_vectors_list + fever_vectors_list + news_vectors_list + scifact_vectors_list
+        with open('./embeddings/beir_embeddings.jsonl', 'w') as f:
+            for i in range(len(beir_texts)):
+                f.write(json.dumps({'id': beir_docids[i], 'contents': beir_texts[i], 'vector': beir_vectors_list[i]}) + '\n')
+        return beir_texts, actual_docids, beir_docids, beir_vectors_list
 
-climate_vectors = embedding_model.encode(climate_texts, convert_to_numpy=True, convert_to_tensor=False)
-covid_vectors = embedding_model.encode(covid_texts, convert_to_numpy=True, convert_to_tensor=False)
-fever_vectors = embedding_model.encode(fever_texts, convert_to_numpy=True, convert_to_tensor=False)
-news_vectors = embedding_model.encode(news_texts, convert_to_numpy=True, convert_to_tensor=False)
-scifact_vectors = embedding_model.encode(scifact_texts, convert_to_numpy=True, convert_to_tensor=False)
+    def __create_hnsw_index(self):
+        if platform.system() == 'Windows':
+            subprocess.call("create_hnsw.bat", shell=True)
+        else:
+            subprocess.call("create_hnsw.sh", shell=True)
 
-climate_vectors_list = [np.array(v).tolist() for v in climate_vectors]
-covid_vectors_list = [np.array(v).tolist() for v in covid_vectors]
-fever_vectors_list = [np.array(v).tolist() for v in fever_vectors]
-news_vectors_list = [np.array(v).tolist() for v in news_vectors]
-scifact_vectors_list = [np.array(v).tolist() for v in scifact_vectors]
+    def __rerank(self, beir_texts: list, actual_docids: list):
+        searcher = FaissSearcher('hnsw_index', self.embedding_model)
 
-beir_texts = climate_texts + covid_texts + fever_texts + news_texts + scifact_texts
-actual_docids = climate_docids + covid_docids + fever_docids + news_docids + scifact_docids
-beir_docids = [i for i in range(len(beir_texts))]
-beir_vectors_list = climate_vectors_list + covid_vectors_list + fever_vectors_list + news_vectors_list + scifact_vectors_list
+        model_checkpoint = "./roberta_fever_mnli"
+        tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+        model_custom = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
 
+        # Use GPU if available
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model_custom.to(device)
 
-with open('./embeddings/beir_embeddings.jsonl', 'w') as f:
-    for i in range(len(beir_texts)):
-        f.write(json.dumps({'id': beir_docids[i], 'contents': beir_texts[i], 'vector': beir_vectors_list[i]}) + '\n')
+        hits = searcher.search(self.query_embedding, k=self.k)
+        label_mapping = {0: "SUPPORTS", 1: "REFUTES", 2: "NOT ENOUGH INFO"}
 
-if platform.system() == 'Windows':
-    subprocess.call("create_hnsw.bat", shell=True)
-else:
-    subprocess.call("create_hnsw.sh", shell=True)
+        # Batch processing
+        batch_size = 32  # Adjust based on your GPU memory
+        hits_with_standing = []
 
-searcher = FaissSearcher(
-    'hnsw_index',
-    embedding_model
-)
+        for i in range(0, len(hits), batch_size):
+            batch_hits = hits[i:i+batch_size]
+            
+            # Prepare batch inputs
+            input_texts = [
+                f"query: {self.query} context: {beir_texts[int(hit.docid)]}" 
+                for hit in batch_hits
+            ]
+            
+            # Batch tokenization
+            inputs = tokenizer(
+                input_texts, 
+                return_tensors="pt", 
+                truncation=True, 
+                padding=True
+            ).to(device)
+            
+            # Batch inference
+            with torch.no_grad():
+                outputs = model_custom(**inputs)
+                
+                # Batch processing of probabilities and predictions
+                logits = outputs.logits
+                probs = softmax(logits, dim=-1)
+                predicted_classes = torch.argmax(probs, dim=-1)
+            
+            # Convert batch results
+            for j, hit in enumerate(batch_hits):
+                hits_with_standing.append({
+                    'docid': actual_docids[int(hit.docid)],
+                    'score': hit.score,
+                    'text': beir_texts[int(hit.docid)],
+                    'standing': label_mapping[predicted_classes[j].item()]
+                })
 
-model_checkpoint = "./roberta_fever_mnli"
-tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-model_custom = AutoModelForSequenceClassification.from_pretrained(model_checkpoint)
-
-hits = searcher.search(query_embedding, k=k)
-# texts are stored at beir_texts[int(hits[i].docid)]
-# docids are stored at actual_docids[int(hits[i].docid)]
-# scores are stored at hits[i].score
-# when feeding format is f"query: {query} context: {beir_texts[int(hits[i].docid)]}"
-hits_with_standing = []
-
-label_mapping = {0: "SUPPORTS", 1: "REFUTES", 2: "NOT ENOUGH INFO"}
-
-for hit in hits:
-    input_text = f"query: {query} context: {beir_texts[int(hit.docid)]}"
-    inputs = tokenizer(input_text, return_tensors="pt", truncation=True, padding=True)
+        # Sort and return top k results
+        return sorted(hits_with_standing, key=lambda x: x['score'], reverse=True)[:self.k]
     
-    # Forward pass
-    outputs = model_custom(**inputs)
+    def __rerank_without_standings(self, beir_texts: list, actual_docids: list):
+        searcher = FaissSearcher('hnsw_index', self.embedding_model)
+        hits = searcher.search(self.query_embedding, k=self.k)
+        return [{'docid': actual_docids[int(hit.docid)], 'score': hit.score, 'text': beir_texts[int(hit.docid)]} for hit in hits]
     
-    # Get logits and probabilities
-    logits = outputs.logits
-    probs = softmax(logits, dim=-1)
+    def retrieve(self):
+        beir_texts, actual_docids, beir_docids, beir_vectors_list = self.__initial_rankings()
+        self.__create_hnsw_index()
+        return self.__rerank(beir_texts, actual_docids)
     
-    # Get predicted class (index of max probability)
-    predicted_class = torch.argmax(probs, dim=-1).item()
-    
-    # Add result to outputs
-    hits_with_standing.append({
-        'docid': actual_docids[int(hit.docid)],
-        'score': hit.score,
-        'text': beir_texts[int(hit.docid)],
-        'standing': label_mapping[predicted_class]
-    })
-
-hits_with_standing = sorted(hits_with_standing, key=lambda x: x['score'], reverse=True)
+    def retrieve_without_standings(self):
+        beir_texts, actual_docids, beir_docids, beir_vectors_list = self.__initial_rankings()
+        self.__create_hnsw_index()
+        return self.__rerank_without_standings(beir_texts, actual_docids)

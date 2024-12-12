@@ -1,0 +1,4 @@
+{"metrics_mnli": {"eval_loss": 0.4297417402267456, "eval_model_preparation_time": 0.004, "eval_accuracy": 0.8987264391237901, "eval_f1": 0.899002096457782, 
+"eval_precision": 0.8998570456318667, "eval_recall": 0.8987264391237901, "eval_runtime": 72.0604, "eval_samples_per_second": 136.205, "eval_steps_per_second": 17.027}, 
+"metrics_fever": {"eval_loss": 0.3437982499599457, "eval_model_preparation_time": 0.005, "eval_accuracy": 0.90254145767837, "eval_f1": 0.901648992332861, 
+"eval_precision": 0.9010159088037477, "eval_recall": 0.90254145767837, "eval_runtime": 311.1389, "eval_samples_per_second": 133.924, "eval_steps_per_second": 16.742}}
