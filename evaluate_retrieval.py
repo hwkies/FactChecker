@@ -119,11 +119,11 @@ def measure_retrieval_time(topics: dict, num_runs=5, k=100):
         'std_dev': overall_std_dev
     }
 
-averagePrecisionSum = get_average_precision_sum(climate_topics, climate_qrels)# + get_average_precision_sum(covid_topics, covid_qrels) + get_average_precision_sum(fever_topics, fever_qrels) + get_average_precision_sum(news_topics, news_qrels) + get_average_precision_sum(scifact_topics, scifact_qrels)
-lenTopics = len(climate_topics)# + len(covid_topics) + len(fever_topics) + len(news_topics) + len(scifact_topics)
+averagePrecisionSum = get_average_precision_sum(climate_topics, climate_qrels) + get_average_precision_sum(covid_topics, covid_qrels) + get_average_precision_sum(fever_topics, fever_qrels) + get_average_precision_sum(news_topics, news_qrels) + get_average_precision_sum(scifact_topics, scifact_qrels)
+lenTopics = len(climate_topics) + len(covid_topics) + len(fever_topics) + len(news_topics) + len(scifact_topics)
 meanAveragePrecision = averagePrecisionSum / lenTopics
-averageRecall = get_recall_at_k(climate_topics, climate_qrels)# + get_recall_at_k(covid_topics, covid_qrels) + get_recall_at_k(fever_topics, fever_qrels) + get_recall_at_k(news_topics, news_qrels) + get_recall_at_k(scifact_topics, scifact_qrels) / 5
-f1Score = get_f1_score_at_k(climate_topics, climate_qrels)# + get_f1_score_at_k(covid_topics, covid_qrels) + get_f1_score_at_k(fever_topics, fever_qrels) + get_f1_score_at_k(news_topics, news_qrels) + get_f1_score_at_k(scifact_topics, scifact_qrels) / 5
+averageRecall = get_recall_at_k(climate_topics, climate_qrels) + get_recall_at_k(covid_topics, covid_qrels) + get_recall_at_k(fever_topics, fever_qrels) + get_recall_at_k(news_topics, news_qrels) + get_recall_at_k(scifact_topics, scifact_qrels) / 5
+f1Score = get_f1_score_at_k(climate_topics, climate_qrels) + get_f1_score_at_k(covid_topics, covid_qrels) + get_f1_score_at_k(fever_topics, fever_qrels) + get_f1_score_at_k(news_topics, news_qrels) + get_f1_score_at_k(scifact_topics, scifact_qrels) / 5
 timeStats = measure_retrieval_time(climate_topics, num_runs=1)
 jsonResult = {
     "MAP@100": meanAveragePrecision, 
